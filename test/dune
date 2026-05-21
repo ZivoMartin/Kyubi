@@ -1,0 +1,6 @@
+(test
+ (name test_kyubi)
+ (libraries kyubi)
+ (deps
+  (glob_files programs/*)
+  (glob_files result/*)))

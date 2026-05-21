@@ -1,0 +1,2 @@
+1 -> !print --> side_effect
+2 -> !println --> side_effect

@@ -1,0 +1,4 @@
+(executable
+ (public_name kyubi)
+ (name main)
+ (libraries kyubi))
