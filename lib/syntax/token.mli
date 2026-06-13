@@ -1,5 +1,13 @@
-open Operator
+type t =
+  | Number of int
+  | Operator of Operator.t
+  | Ident of string
+  | At
+  | Dollar
+  | Colon
+  | Unit
+  | Arg of string
+  | OpeningBracket
+  | ClosingBracket
 
-type token = Number of int | Operator of operator | Ident of string
-
-val string_of_token : token -> string
+val to_string : t -> string

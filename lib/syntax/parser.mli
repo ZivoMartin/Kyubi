@@ -1,4 +1,1 @@
-open Ast
-open Token
-
-val parse : token list -> ast option
+val parse : Token.t Located.t list -> Ast.t

@@ -1,9 +1,10 @@
-open Operator
-open Token
-open Value
-
-type ast =
-  | Value of Value.t
+type t =
+  | Empty
+  | Literal of Literal.t
   | Ident of string
-  | Flow of ast * (operator * ast) list
-  | Program of ast * ast option
+  | SQueue of Special_queue.t
+  | Behavior of string list * t
+  | Flow of t * (Operator.t * t) list
+  | Program of t * t
+
+val to_string : t -> string

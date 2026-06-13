@@ -1,0 +1,22 @@
+1 -> +  // This is inserting +
+// This is inserting 2 in plus
+2 /* Adding multiline comment*/-> +
+3 -> + 
+// Same here
+
+/*
+1 -> +  // This is inserting +
+// This is inserting 2 in plus
+2 -> +
+3 -> + 
+// Same here
+              4 -> -
++ -->
+    - -->             // Very long chain
+    + --> result      // everything is chained
+*/
+
+              4 -> -
++ -->
+    - -->             // Very long chain
+    + --> result      // everything is chained

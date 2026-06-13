@@ -1,16 +1,23 @@
-open Value
+type t = { kyus : (string, (Value.t, Value.t Behavior.t) Kyu.t) Hashtbl.t }
 
-type env = { queues : (string, Value.t Queue.t) Hashtbl.t }
+val create : unit -> t
+val enqueue : t -> string -> Value.t -> unit
+val env_of_string : string -> t
+val string_of_env : t -> string
+val equal : t -> t -> bool
+val dequeue_in : t -> string -> string -> Flow_size.t -> unit
+val produce_in : t -> string -> string -> Flow_size.t -> Flow_size.t -> unit
 
-val create : unit -> env
-val enqueue : env -> string -> Value.t -> unit
-val dequeue_in : env -> string -> string -> unit
-val env_of_string : string -> env
-val string_of_env : env -> string
-val equal : env -> env -> bool
-val dequeue : env -> string -> Value.t
-val dequeue_n : env -> string -> int -> Value.t list
-val dequeue_n_in : env -> int -> string -> string -> unit
-val dequeue_all_in : env -> string -> string -> unit
-val produce_n_in : env -> int -> string -> string -> unit
-val produce_in : env -> string -> string -> unit
+val produce_in_this_queue :
+  t -> string -> Value.t Queue.t -> Flow_size.t -> Flow_size.t -> unit
+
+val enqueue_behavior : t -> string -> Value.t Behavior.t -> unit
+val dequeue_behavior_in : t -> string -> string -> Flow_size.t -> unit
+
+val promote_in :
+  t ->
+  (Value.t -> Value.t Behavior.t) ->
+  string ->
+  string ->
+  Flow_size.t ->
+  unit

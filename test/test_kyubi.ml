@@ -1,10 +1,7 @@
-open Kyubi.Run
-open Kyubi.Env
-
 type test_entry = {
   program : string;
-  expected_env : Kyubi.Env.env;
-  actual_env : Kyubi.Env.env;
+  expected_env : Kyubi.Env.t;
+  actual_env : Kyubi.Env.t;
 }
 
 let () =
@@ -61,8 +58,8 @@ let () =
             But got:\n\
             %s"
            test.program
-           (string_of_env test.expected_env)
-           (string_of_env test.actual_env));
+           (Kyubi.Env.string_of_env test.expected_env)
+           (Kyubi.Env.string_of_env test.actual_env));
       assert false
   | None ->
       print_endline "All test passed.";

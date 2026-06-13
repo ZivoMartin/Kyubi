@@ -1,0 +1,7 @@
+add_one: |
+f: 3
+g: ||
++: |
+add_two: |
+q:
+result: 7 34

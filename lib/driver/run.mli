@@ -1,4 +1,1 @@
-open Env
-open Ast
-
-val run : string -> ast option * env
+val run : string -> Ast.t option * Env.t

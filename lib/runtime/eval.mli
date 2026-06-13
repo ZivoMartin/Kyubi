@@ -1,4 +1,1 @@
-open Ast
-open Env
-
-val eval : ast -> ast * env
+val eval : Ast.t -> Ast.t * Env.t
