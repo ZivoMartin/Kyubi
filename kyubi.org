@@ -1,0 +1,150 @@
+* Project Health
+** DONE Make a testing framework
+** TODO Rename behavior in executable
+** DONE Create folder 
+** DONE Factorize behavior instantiation function
+** DONE Factorize the in_this_queue functions
+** DONE Try to refactorize the project folders
+** DONE Remove the open everywhere
+** DONE Create an helper file
+** TODO Add tests for program supposed to fail
+** DONE Create a Queue_helper file
+** TODO Create a is_valid_ident function and use it in Value.of_string for the generics
+* Errors
+** DONE Do a better error handling in the lexer
+** DONE Do a better error handling in the parser
+** DONE Refuse program like q1 -> @ -> q2
+** DONE Add error messages for the parser
+** TODO Add location in ast nodes
+** TODO Do a better error handling in the interpreter
+** TODO Do a better error handling in builtins
+** TODO Do a better error handling in env
+** TODO Do a better error handling in kyu
+** TODO promote_in type error
+** DONE Make clean error everywhere
+
+* Language Features
+** DONE Support unit syntax
+** DONE Allow a colon-less syntax for behavior without arguments
+** TODO Make sure that the input queue is changed correctly when dequeuing a beahvior
+** TODO Add character support
+** TODO Add litteral string supports
+They would be totally immutable, you could I think
+create new one (so string would not just bee statically defined)
+but I will not authorize mutations since it litterally
+introduce side effects on something else than kyus, which breaks
+the invariant of the language.
+
+** TODO Add string builtins
+*** TODO Add a create_string builtin
+Would be great to have a builtin that takes an integer, and then use the input
+queue of the behavior to dequeue exactly n characters, and then from those n
+characters create a new string.
+I think we are not breaking the invariants here, since dequeuing a dynamic
+amount of argument is authorized in the language using the input queue, and
+generating a string from those argument is just a builtin magic which is
+already authorized (for instance just with the + operator, in theorie you
+have no way to re implement + without builtin magic)
+*** TODO Add a destroy_stirng builtin
+Here we do the other way around, takes
+a string and dequeue all the chars one by one
+
+** TODO Define a sort of stdlib for string
+Once we have those builtin we can just re-implement
+basic string primitives since we have the ability to create
+and destroy strings, you can just implement compare
+by taking 2 strings, destroy both, and compare each of the elements
+
+** TODO Add pattern matching
+** TODO Add anonymous queues
+** TODO Add conditionals via pattern matching
+** TODO Think about what we do of the content of the output queue when dequeuing behavior
+rn we just move the output queue with it's element in the new destination which is probably not what we want.
+We could either:
+- Destroy all the elements
+- Bring all the elements in the input queue of the behavior we are dequeing
+- Fail
+** TODO Support flow size for input/output queues
+** DONE Support empty programs
+** DONE Add single-line comments
+** DONE Add multi-line comments
+** DONE Add print builtin
+** DONE Add println builtin
+** DONE Create a value type instead of int
+* Compiler features 
+** TODO Feed behavior with input queue instead of named args
+** DONE Add spanning on token
+** TODO Rework the kyu-production representation
+Should be either a builtin or an ast-based behavior.
+Otherwise we cannot properly demote builtins into first class values.
+** TODO Improve the queue system
+Each queue should have a entry queue along with an optional production function
+and an output queue.
+When we dequeue either the queue can produce so we only look at the output queue,
+either it cannot and so we look at the output queue.
+When we produce on a queue we crash if the queue cannot produce otherwise we produce
+with value from the entry queue and enqueue the result in the output queue
+** DONE Add a SpecialQueue Type for @ and $ instead of having mulitple nodes
+** DONE Implement to_string for ast
+** DONE Implement to_string for behaviors in Value
+* Behaviors
+** DONE Add the generic value type
+** DONE Add behavior as first class value
+** DONE Lex generic values correctly
+** DONE Lex symbols : {, }, :, @
+** DONE Consider anything starting with ' as a value, not an ident during parsing
+** DONE Make the queue @ forbidden outside of a bahevior
+** DONE Make the queue $ forbidden outside of a bahevior
+** TODO Add optional type label on generic parameters
+** DONE Add a behavior node in the ast
+The node should probably get a list of value
+** DONE Correctly parse behaviors
+** DONE Understand behaviors at runtime
+** DONE We definitly want to autorize nested behaviors
+However, a nested behavior should NOT be authorized to use the generic values
+of it's parents
+** DONE Write a test to make sure empty behavior are parsed correctly
+** DONE Give clear message when you do something forbidden like @ -> x or x -> $
+** DONE Support @
+** TODO Support $
+** DONE Return unit in behavior instead of value list
+* Operators
+** DONE Add the --> operator
+** DONE Remove the ambiguity between - and -->/->
+
+** DONE Support enqueue n
+** DONE Support enqueue all
+** DONE Support produce n
+
+** DONE Extend the produce operator
+I would like to have something like this
+-x-y>
+x represents how many time we behave, y represents how many time we dequeue.
+--> would be -1-1>
+If you just want to behave you can theorically do something like this
+f --0> g which will behave and enqueue nothing in g.
+We already allow things like
+f -0> g which are doing nothing so it's fine.
+** DONE Inroduce the production queue
+** DONE Adapt the test with the new operators functionement
+** TODO Add a dup operator to duplicate the head
+Probably something like => and we could have =->
+which copy the input queue head to produce,
+-=> which consume the input queue but copy the output queue
+and ==> which copy the entre and the output 
+** DONE Implement All for produce in
+** DONE Add the Behavior Enqueue operator
+On the left we either have a literal behavior, in this case
+the behavior is added on the behavior queue of the right ,
+or a Kyu, in this case we dequeue the behavior queue from the left
+to the right.
+Proposal: ~>
+** DONE Add the Promote operator
+Should dequeue a behavior from the output queue of the left and promote it into the
+behavior queue of the right
+Proposal: -~>
+** TODO Add the Demote operator
+Should dequeue a behavior from the behavior queue of the left and demote it to
+a first class value in the input queue of the right
+Proposal: ~->
+** DONE Support the flow size 
