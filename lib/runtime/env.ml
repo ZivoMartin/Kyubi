@@ -161,3 +161,8 @@ let promote_in e compile =
   generic_dequeue_in e dequeue (fun e k v ->
       let behavior = compile v in
       enqueue_behavior e k behavior)
+
+let demote_in e reverse =
+  generic_dequeue_in e dequeue_behavior (fun e k b ->
+      let v = reverse b.behavior in
+      enqueue e k v)

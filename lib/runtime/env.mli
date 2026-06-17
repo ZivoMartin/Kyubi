@@ -21,3 +21,11 @@ val promote_in :
   string ->
   Flow_size.t ->
   unit
+
+val demote_in :
+  t ->
+  (Value.t Behavior.t -> Value.t) ->
+  string ->
+  string ->
+  Flow_size.t ->
+  unit

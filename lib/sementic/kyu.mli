@@ -1,5 +1,6 @@
 exception NotEnoughElementInEntryQueue
 
+type 'v apply = (string, 'v) Hashtbl.t -> 'v Queue.t -> 'v Queue.t -> unit
 type ('v, 'b) production = { behavior : 'b; output : 'v Queue.t }
 type ('v, 'b) t = { entry : 'v Queue.t; prod : ('v, 'b) production Queue.t }
 
@@ -17,4 +18,4 @@ val to_string : ('v -> string) -> ('v, 'b) t -> string
 val of_list : 'v list -> ('v, 'b) t
 val output_length : ('v, 'b) t -> int
 val entry_length : ('v, 'b) t -> int
-val produce : ('v, 'b) t -> ('b -> 'v Apply.t) -> ('b -> string list) -> unit
+val produce : ('v, 'b) t -> ('b -> 'v apply) -> ('b -> string list) -> unit

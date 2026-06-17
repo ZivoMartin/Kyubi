@@ -5,7 +5,7 @@ type t =
   | Number of int
   | Unit
   | Behavior of string list * Ast.t
-  | BuiltinBehavior of Builtin.t * t Apply.t
+  | BuiltinBehavior of Builtin.t * t Kyu.apply
 
 let of_literal args l =
   match l with
@@ -79,4 +79,6 @@ let activate_builtin b =
           | _ -> raise TypeErrorInBuiltin)
   in
   Behavior.Builtin
-    (b, fun args output -> impl args |> List.to_seq |> Queue.add_seq output)
+    ( b,
+      fun args input output -> impl args |> List.to_seq |> Queue.add_seq output
+    )

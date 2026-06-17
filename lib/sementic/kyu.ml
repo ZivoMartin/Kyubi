@@ -1,6 +1,7 @@
 exception EntryQueueEmpty
 exception NotEnoughElementInEntryQueue
 
+type 'v apply = (string, 'v) Hashtbl.t -> 'v Queue.t -> 'v Queue.t -> unit
 type ('v, 'b) production = { behavior : 'b; output : 'v Queue.t }
 type ('v, 'b) t = { entry : 'v Queue.t; prod : ('v, 'b) production Queue.t }
 
@@ -40,7 +41,7 @@ let produce k process get_args =
           |> Option_utils.unwrap_or_raise NotEnoughElementInEntryQueue
         in
         let args = List.combine args values |> List.to_seq |> Hashtbl.of_seq in
-        process p.behavior args p.output;
+        process p.behavior args source p.output;
         work p.output rest
   in
   let prods = k.prod |> Queue.to_seq |> List.of_seq |> List.rev in

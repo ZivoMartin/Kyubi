@@ -2,7 +2,7 @@ type t =
   | Number of int
   | Unit
   | Behavior of string list * Ast.t
-  | BuiltinBehavior of Builtin.t * t Apply.t
+  | BuiltinBehavior of Builtin.t * t Kyu.apply
 
 val to_string : t -> string
 val of_string : string -> t
