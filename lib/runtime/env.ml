@@ -4,7 +4,11 @@ exception Invalid_env_format
 
 let env_base_cap = 1000
 
-type t = { kyus : (string, (Value.t, Value.t Behavior.t) Kyu.t) Hashtbl.t }
+type t = {
+  kyus : (string, (Value.t, Value.t Behavior.t) Kyu.t) Hashtbl.t;
+  output : Value.t Queue.t;
+  input : Value.t Queue.t;
+}
 
 let generic_insert_builtin e insert =
   List.iter
@@ -19,14 +23,19 @@ let generic_insert_builtin e insert =
 
 let insert_missing_builtins e =
   generic_insert_builtin e (fun kyus name kyu ->
-      if Hashtbl.mem e.kyus name then () else Hashtbl.replace e.kyus name kyu)
+      if Hashtbl.mem kyus name then () else Hashtbl.replace e.kyus name kyu)
 
 let insert_builtins e =
-  generic_insert_builtin e (fun kyus name kyu ->
-      Hashtbl.replace e.kyus name kyu)
+  generic_insert_builtin e (fun kyus name kyu -> Hashtbl.replace kyus name kyu)
 
 let create (_ : unit) =
-  let e = { kyus = Hashtbl.create env_base_cap } in
+  let e =
+    {
+      kyus = Hashtbl.create env_base_cap;
+      output = Queue.create ();
+      input = Queue.create ();
+    }
+  in
   insert_builtins e;
   e
 
@@ -68,7 +77,13 @@ let env_of_string s =
           | _ -> raise Invalid_env_format)
   in
 
-  let env = { kyus = hashtable_of_list kyus } in
+  let env =
+    {
+      kyus = hashtable_of_list kyus;
+      output = Queue.create ();
+      input = Queue.create ();
+    }
+  in
   insert_missing_builtins env;
   env
 
@@ -80,28 +95,43 @@ let fetch_kyu e kyu_name =
       Hashtbl.add e.kyus kyu_name kyu;
       kyu)
 
-let enqueue e name v =
-  let kyu = fetch_kyu e name in
-  Kyu.enqueue kyu v
+let enqueue e k x =
+  match k with
+  | Kyu_id.Input -> Queue.add x e.input
+  | Kyu_id.Output -> Queue.add x e.output
+  | Kyu_id.Name name ->
+      let kyu = fetch_kyu e name in
+      Kyu.enqueue kyu x
 
-let dequeue e kyu_name =
-  fetch_kyu e kyu_name |> Kyu.dequeue
-  |> Option_utils.unwrap_or_raise @@ Empty_kyu kyu_name
+let dequeue e = function
+  | Kyu_id.Input ->
+      Queue.take_opt e.input |> Option_utils.unwrap_or_raise @@ Empty_kyu "$"
+  | Kyu_id.Output ->
+      Queue.take_opt e.input |> Option_utils.unwrap_or_raise @@ Empty_kyu "@"
+  | Kyu_id.Name name ->
+      fetch_kyu e name |> Kyu.dequeue
+      |> Option_utils.unwrap_or_raise @@ Empty_kyu name
+
+let peek e = function
+  | Kyu_id.Input ->
+      Queue.peek_opt e.input |> Option_utils.unwrap_or_raise @@ Empty_kyu "$"
+  | Kyu_id.Output ->
+      Queue.peek_opt e.input |> Option_utils.unwrap_or_raise @@ Empty_kyu "@"
+  | Kyu_id.Name name ->
+      fetch_kyu e name |> Kyu.peek
+      |> Option_utils.unwrap_or_raise @@ Empty_kyu name
 
 let dequeue_in_once e dequeue enqueue src dest = dequeue e src |> enqueue e dest
 
-let dequeue_n e dequeue src n =
-  List.init n (fun i -> i)
-  |> List.fold_left (fun acc _ -> dequeue e src :: acc) []
-  |> List.rev (* We want the result to be in the good fifo order *)
-
-let dequeue_all_in e dequeue enqueue src dest =
-  for i = 0 to Kyu.output_length (fetch_kyu e src) - 1 do
-    dequeue_in_once e dequeue enqueue src dest
-  done
+let rec dequeue_all_in e dequeue enqueue src dest =
+  try
+    (* if we cannot produce this will fail *)
+    dequeue_in_once e dequeue enqueue src dest;
+    dequeue_all_in e dequeue enqueue src dest
+  with Empty_kyu _ -> ()
 
 let dequeue_n_in e n dequeue enqueue src dest =
-  for i = 0 to n - 1 do
+  for _ = 0 to n - 1 do
     dequeue_in_once e dequeue enqueue src dest
   done
 
@@ -118,7 +148,7 @@ let rec produce_all e k =
   with Kyu.NotEnoughElementInEntryQueue -> ()
 
 let produce_n e n k =
-  for i = 0 to n - 1 do
+  for _ = 0 to n - 1 do
     produce_once e k
   done
 
@@ -134,15 +164,10 @@ let generic_produce_in e dequeue enqueue src dest f1 f2 =
   | Flow_size.All -> produce_all e src);
   generic_dequeue_in e dequeue enqueue src dest f2
 
-let dequeue_in e = generic_dequeue_in e dequeue enqueue
+let dequeue_in e k1 k2 = generic_dequeue_in e dequeue enqueue k1 k2
 
-let dequeue_in_this_queue e k q =
-  generic_dequeue_in e dequeue (fun _ x q -> Queue.add q x) k q
-
-let produce_in e = generic_produce_in e dequeue enqueue
-
-let produce_in_this_queue e k q =
-  generic_produce_in e dequeue (fun _ x q -> Queue.add q x) k q
+let produce_in e =
+  generic_produce_in e (fun e name -> dequeue e (Kyu_id.Name name)) enqueue
 
 let enqueue_behavior e k b =
   let kyu = fetch_kyu e k in
@@ -166,3 +191,6 @@ let demote_in e reverse =
   generic_dequeue_in e dequeue_behavior (fun e k b ->
       let v = reverse b.behavior in
       enqueue e k v)
+
+let dup_in e = generic_dequeue_in e peek enqueue
+let set_input_output e input output = { kyus = e.kyus; input; output }

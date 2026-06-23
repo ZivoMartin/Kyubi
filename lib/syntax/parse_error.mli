@@ -1,4 +1,10 @@
-type expectation = FlowStart | FlowComponent | BehaviorColon | ClosingBracket
+type expectation =
+  | FlowStart
+  | FlowComponent
+  | BehaviorColon
+  | ClosingBracket
+  | ClosingSBracket
+  | SerieComma
 
 type t =
   | UnexpectedToken of {
@@ -7,6 +13,7 @@ type t =
     }
   | SpecialQueueOutOfBehavior of Token.t Located.t
   | UnclosedBehavior of Span.t
+  | UnclosedSerie of Span.t
   | CannotEnqueueInput of Token.t Located.t
   | CannotDequeueOutput of Token.t Located.t
 

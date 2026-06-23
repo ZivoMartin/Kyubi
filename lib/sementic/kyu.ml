@@ -1,9 +1,12 @@
-exception EntryQueueEmpty
 exception NotEnoughElementInEntryQueue
 
 type 'v apply = (string, 'v) Hashtbl.t -> 'v Queue.t -> 'v Queue.t -> unit
 type ('v, 'b) production = { behavior : 'b; output : 'v Queue.t }
-type ('v, 'b) t = { entry : 'v Queue.t; prod : ('v, 'b) production Queue.t }
+
+type ('v, 'b) t = {
+  mutable entry : 'v Queue.t;
+  prod : ('v, 'b) production Queue.t;
+}
 
 let get_output_queue k =
   Queue.peek_opt k.prod
@@ -12,16 +15,12 @@ let get_output_queue k =
 
 let enqueue k x = Queue.add x k.entry
 let dequeue k = get_output_queue k |> Queue.take_opt
-
-let dequeue_entry k =
-  match Queue.take_opt k.entry with
-  | Some x -> x
-  | None -> raise EntryQueueEmpty
-
+let peek k = get_output_queue k |> Queue.peek_opt
 let create () = { entry = Queue.create (); prod = Queue.create () }
 
 let enqueue_behavior k behavior =
-  Queue.add { behavior; output = Queue.create () } k.prod
+  Queue.add { behavior; output = k.entry } k.prod;
+  k.entry <- Queue.create ()
 
 let dequeue_behavior k = Queue.take_opt k.prod
 

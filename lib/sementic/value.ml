@@ -1,4 +1,3 @@
-exception InvalidNumberArgs of int * int
 exception TypeErrorInBuiltin
 
 type t =
@@ -40,45 +39,32 @@ let equal v1 v2 =
   | _ -> false
 
 let activate_builtin b =
-  let fetch_args args =
-    Builtin.build_args b
-    |> List.map (fun a -> Hashtbl.find_opt args a)
-    |> Option_utils.flatten
-    |> Option_utils.unwrap_or_raise (Failure "Failed to parse args")
-  in
-
   let impl =
     match b with
-    | Add -> (
-        fun args ->
-          let args = fetch_args args in
-          match args with
-          | [ Number x1; Number x2 ] -> [ Number (x1 + x2) ]
-          | _ -> raise TypeErrorInBuiltin)
-    | Sub -> (
-        fun args ->
-          let args = fetch_args args in
-          match args with
-          | [ Number x1; Number x2 ] -> [ Number (x2 - x1) ]
-          | _ -> raise TypeErrorInBuiltin)
-    | Print -> (
-        fun args ->
-          let args = fetch_args args in
-          match args with
-          | [ x ] ->
-              print_string (to_string x);
-              [ Unit ]
-          | _ -> raise TypeErrorInBuiltin)
-    | Println -> (
-        fun args ->
-          let args = fetch_args args in
-          match args with
-          | [ x ] ->
-              print_endline (to_string x);
-              [ Unit ]
-          | _ -> raise TypeErrorInBuiltin)
+    | Builtin.Add -> (
+        function
+        | [ Number x1; Number x2 ] -> [ Number (x1 + x2) ]
+        | _ -> raise TypeErrorInBuiltin)
+    | Builtin.Sub -> (
+        function
+        | [ Number x1; Number x2 ] -> [ Number (x1 - x2) ]
+        | _ -> raise TypeErrorInBuiltin)
+    | Builtin.Print -> (
+        function
+        | [ x ] ->
+            print_string (to_string x);
+            [ Unit ]
+        | _ -> raise TypeErrorInBuiltin)
+    | Builtin.Println -> (
+        function
+        | [ x ] ->
+            print_endline (to_string x);
+            [ Unit ]
+        | _ -> raise TypeErrorInBuiltin)
   in
   Behavior.Builtin
     ( b,
-      fun args input output -> impl args |> List.to_seq |> Queue.add_seq output
-    )
+      fun _ input output ->
+        match Builtin.get_n b |> Queue_utils.dequeue_list_from_queue input with
+        | Some args -> impl args |> List.to_seq |> Queue.add_seq output
+        | None -> raise Kyu.NotEnoughElementInEntryQueue )

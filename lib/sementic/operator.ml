@@ -4,14 +4,18 @@ type t =
   | Benqueue of Flow_size.t
   | Promote of Flow_size.t
   | Demote of Flow_size.t
+  | Dup of Flow_size.t
 
 let to_string = function
   | Enqueue f -> Flow_size.to_string f |> Printf.sprintf "-%s>"
   | Benqueue f -> Flow_size.to_string f |> Printf.sprintf "~%s>"
   | Promote f -> Flow_size.to_string f |> Printf.sprintf "-%s~>"
   | Demote f -> Flow_size.to_string f |> Printf.sprintf "~%s->"
+  | Dup f -> Flow_size.to_string f |> Printf.sprintf "=%s>"
   | Produce (f1, f2) ->
       Printf.sprintf "-%s-%s>" (Flow_size.to_string f1) (Flow_size.to_string f2)
+
+let is_body_char = function '~' | '=' | '-' -> true | _ -> false
 
 let of_string s =
   let fail () =
@@ -25,7 +29,7 @@ let of_string s =
       let c = s.[offset] in
       match c with
       | '>' -> if offset + 1 = length then (offset, [], []) else fail ()
-      | '~' | '-' ->
+      | c when is_body_char c ->
           let p1 = offset + 1 in
           let p2, dashes, flows = parse (offset + 1) in
           let flow =
@@ -55,4 +59,5 @@ let of_string s =
     | [ '~'; '-' ], [ f1; f2 ] ->
         flow_should_be_absent f2;
         Demote f1
+    | [ '=' ], [ f ] -> Dup f
     | _ -> fail ()

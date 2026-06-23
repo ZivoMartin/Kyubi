@@ -21,3 +21,31 @@ let of_string cast s =
   String.split_on_char ' ' s |> List.map String.trim
   |> List.filter_map (fun s -> if s = String.empty then None else Some (cast s))
   |> List.to_seq |> Queue.of_seq
+
+let take q = function
+  | Flow_size.Absent ->
+      Some
+        (Queue.take_opt q
+        |> Option.map (fun v -> [ v ])
+        |> Option_utils.unwrap_or [])
+  | Flow_size.All -> Some (Queue.to_seq q |> List.of_seq)
+  | Flow_size.Const n ->
+      let rec work n acc =
+        if n = 0 then List.rev acc else work (n - 1) (Queue.take q :: acc)
+      in
+      if Queue.length q >= n then Some (work n []) else None
+
+let dequeue_in q1 q2 = function
+  | Flow_size.Absent ->
+      Queue.take_opt q1 |> Option.map (fun v -> Queue.add q2) |> Option.is_some
+  | Flow_size.All ->
+      Queue.to_seq q1 |> Queue.add_seq q2;
+      true
+  | Flow_size.Const n ->
+      let rec work n acc =
+        if n = 0 then List.rev acc else work (n - 1) (Queue.take q1 :: acc)
+      in
+      if Queue.length q1 >= n then (
+        work n [] |> List.to_seq |> Queue.add_seq q2;
+        true)
+      else false

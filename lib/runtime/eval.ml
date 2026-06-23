@@ -5,86 +5,76 @@ let rec compile_into_executable e v =
         ( args,
           ast,
           fun args input output ->
-            let _ = eval e ast args input output in
+            let e = Env.set_input_output e input output in
+            let _ = eval e ast args in
             () )
   | _ -> failwith "Only accept Behavior value"
 
-and reverse_into_value e b =
+and reverse_into_value b =
   match b with
   | Behavior.Defined (args, ast, _) -> Value.Behavior (args, ast)
   | Behavior.Builtin (b, f) -> Value.BuiltinBehavior (b, f)
 
-and step e tree args_map input_queue output_queue =
+and step e tree args_map =
   match tree with
-  | Ast.Empty | Ast.Behavior _ | Ast.SQueue _ | Ast.Ident _ | Ast.Literal _
+  | Ast.Branching _ | Ast.Empty | Ast.Behavior _ | Ast.Kyu _ | Ast.Literal _
   | Ast.Flow (_, []) ->
       None
   | Ast.Program (instr, rest) -> (
-      match (step e instr args_map input_queue output_queue, rest) with
+      match (step e instr args_map, rest) with
       | Some new_instr, _ -> Some (Ast.Program (new_instr, rest))
-      | None, rest -> step e rest args_map input_queue output_queue)
+      | None, rest -> step e rest args_map)
   | Ast.Flow (left, (op, right) :: rest) -> (
-      let return name rest = Some (Ast.Flow (Ast.Ident name, rest)) in
+      let return k rest = Some (Ast.Flow (Ast.Kyu k, rest)) in
       match (left, op, right) with
-      | Ast.Literal l, Operator.Enqueue _, Ast.Ident name ->
+      | Ast.Literal l, Operator.Enqueue _, Ast.Kyu k ->
           let v = Value.of_literal (Some args_map) l in
-          Env.enqueue e name v;
-          return name rest
-      | Ast.Behavior (args, body), Operator.Enqueue _, Ast.Ident name ->
+          Env.enqueue e k v;
+          return k rest
+      | Ast.Behavior (args, body), Operator.Enqueue _, Ast.Kyu k ->
           let v = Value.Behavior (args, body) in
-          Env.enqueue e name v;
-          return name rest
-      | Ast.Ident q1, Operator.Enqueue f, Ast.Ident q2 ->
-          Env.dequeue_in e q1 q2 f;
-          return q2 rest
-      | Ast.Ident q1, Operator.Produce (f1, f2), Ast.Ident q2 ->
-          Env.produce_in e q1 q2 f1 f2;
-          return q2 rest
-      | Ast.Ident q1, Operator.Promote f, Ast.Ident q2 ->
-          Env.promote_in e (compile_into_executable e) q1 q2 f;
-          return q2 rest
-      | Ast.Ident q1, Operator.Demote f, Ast.Ident q2 ->
-          Env.demote_in e (reverse_into_value e) q1 q2 f;
-          return q2 rest
-      | Ast.Ident q1, Operator.Benqueue f, Ast.Ident q2 ->
-          Env.dequeue_behavior_in e q1 q2 f;
-          return q2 rest
-      | Ast.Behavior (args, b), Operator.Benqueue _, Ast.Ident q2 ->
+          Env.enqueue e k v;
+          return k rest
+      | Ast.Kyu k1, Operator.Enqueue f, Ast.Kyu k2 ->
+          Env.dequeue_in e k1 k2 f;
+          return k2 rest
+      | Ast.Kyu (Kyu_id.Name k1), Operator.Produce (f1, f2), Ast.Kyu k2 ->
+          Env.produce_in e k1 k2 f1 f2;
+          return k2 rest
+      | Ast.Kyu k1, Operator.Promote f, Ast.Kyu (Kyu_id.Name k2 as k2_id) ->
+          Env.promote_in e (compile_into_executable e) k1 k2 f;
+          return k2_id rest
+      | Ast.Kyu (Kyu_id.Name k1), Operator.Demote f, Ast.Kyu k2 ->
+          Env.demote_in e reverse_into_value k1 k2 f;
+          return k2 rest
+      | ( Ast.Kyu (Kyu_id.Name k1),
+          Operator.Benqueue f,
+          Ast.Kyu (Kyu_id.Name k2 as k2_id) ) ->
+          Env.dequeue_behavior_in e k1 k2 f;
+          return k2_id rest
+      | ( Ast.Behavior (args, b),
+          Operator.Benqueue Flow_size.Absent,
+          Ast.Kyu (Kyu_id.Name k2 as k2_id) ) ->
           let b = compile_into_executable e (Value.Behavior (args, b)) in
-          Env.enqueue_behavior e q2 b;
-          return q2 rest
-      | Ast.SQueue Special_queue.Input, Operator.Enqueue _, Ast.Ident name ->
-          let v = Queue.take input_queue in
-          Env.enqueue e name v;
-          return name rest
-      | Ast.Ident name, Operator.Enqueue f, Ast.SQueue Special_queue.Output ->
-          failwith "todo"
-      | ( Ast.SQueue Special_queue.Input,
-          Operator.Enqueue f,
-          Ast.SQueue Special_queue.Output ) ->
-          failwith "todo"
-      | Ast.Literal l, Operator.Enqueue _, Ast.SQueue Special_queue.Output ->
-          let v = Value.of_literal (Some args_map) l in
-          Queue.add v output_queue;
-          None
-      | ( Ast.Behavior (args, body),
-          Operator.Enqueue f,
-          Ast.SQueue Special_queue.Output ) ->
-          failwith "todo: enqueue"
-      | Ast.Ident q1, Operator.Produce (f1, f2), Ast.SQueue Special_queue.Output
-        ->
-          Env.produce_in_this_queue e q1 output_queue f1 f2;
-          None
+          Env.enqueue_behavior e k2 b;
+          return k2_id rest
+      | Ast.Kyu k1, Operator.Dup f, Ast.Kyu k2 ->
+          Env.dup_in e k1 k2 f;
+          return k2 rest
+      | _, _, Ast.Branching _ -> failwith "todo"
+      | Ast.Branching _, _, _ ->
+          failwith "You cannot start the flow with a branching"
       | _, Operator.Enqueue _, _
+      | _, Operator.Dup _, _
       | _, Operator.Produce _, _
       | _, Operator.Promote _, _
       | _, Operator.Demote _, _
       | _, Operator.Benqueue _, _ ->
           failwith "type error")
 
-and eval e tree args_map input_queue output_queue =
+and eval e tree args_map =
   let rec work tree =
-    match step e tree args_map input_queue output_queue with
+    match step e tree args_map with
     | Some new_tree -> work new_tree
     | None -> tree
   in
@@ -92,4 +82,4 @@ and eval e tree args_map input_queue output_queue =
 
 let eval tree =
   let e = Env.create () in
-  (eval e tree (Hashtbl.create 1) (Queue.create ()) (Queue.create ()), e)
+  (eval e tree (Hashtbl.create 1), e)

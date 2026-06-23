@@ -5,10 +5,14 @@ type t =
   | At
   | Dollar
   | Colon
+  | Comma
   | Unit
+  | Bar
   | Arg of string
   | OpeningBracket
+  | OpeningSBracket
   | ClosingBracket
+  | ClosingSBracket
 
 let to_string = function
   | Number x -> string_of_int x
@@ -16,8 +20,12 @@ let to_string = function
   | Ident name -> name
   | At -> "@"
   | Dollar -> "$"
+  | Bar -> "|"
   | Colon -> ":"
+  | Comma -> ","
   | Arg name -> Printf.sprintf "'%s" name
   | OpeningBracket -> "{"
+  | OpeningSBracket -> "["
   | ClosingBracket -> "}"
+  | ClosingSBracket -> "]"
   | Unit -> "()"

@@ -1,4 +1,3 @@
-open Env
 open Lexer
 open Parser
 open Eval

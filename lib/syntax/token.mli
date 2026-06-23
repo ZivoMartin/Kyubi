@@ -5,9 +5,13 @@ type t =
   | At
   | Dollar
   | Colon
+  | Comma
   | Unit
+  | Bar
   | Arg of string
   | OpeningBracket
+  | OpeningSBracket
   | ClosingBracket
+  | ClosingSBracket
 
 val to_string : t -> string

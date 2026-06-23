@@ -3,4 +3,5 @@
  (libraries kyubi)
  (deps
   (glob_files programs/*)
+  (glob_files failing_programs/*)
   (glob_files result/*)))

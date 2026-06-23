@@ -3,3 +3,5 @@ val dequeue_list_from_queue : 'a Queue.t -> int -> 'a list option
 val equals : ('a -> 'a -> bool) -> 'a Queue.t -> 'a Queue.t -> bool
 val to_string : ('a -> string) -> 'a Queue.t -> string
 val of_string : (string -> 'a) -> string -> 'a Queue.t
+val take : 'a Queue.t -> Flow_size.t -> 'a list option
+val dequeue_in : 'a Queue.t -> 'a Queue.t -> Flow_size.t -> bool

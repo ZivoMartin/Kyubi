@@ -2,10 +2,15 @@ exception NotEnoughElementInEntryQueue
 
 type 'v apply = (string, 'v) Hashtbl.t -> 'v Queue.t -> 'v Queue.t -> unit
 type ('v, 'b) production = { behavior : 'b; output : 'v Queue.t }
-type ('v, 'b) t = { entry : 'v Queue.t; prod : ('v, 'b) production Queue.t }
+
+type ('v, 'b) t = {
+  mutable entry : 'v Queue.t;
+  prod : ('v, 'b) production Queue.t;
+}
 
 val enqueue : ('v, 'b) t -> 'v -> unit
 val dequeue : ('v, 'b) t -> 'v option
+val peek : ('v, 'b) t -> 'v option
 val create : unit -> ('v, 'b) t
 val enqueue_behavior : ('v, 'b) t -> 'b -> unit
 val dequeue_behavior : ('v, 'b) t -> ('v, 'b) production option

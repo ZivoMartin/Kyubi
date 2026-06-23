@@ -3,9 +3,5 @@ type 'v t =
   | Builtin of Builtin.t * 'v Kyu.apply
 
 let default_behavior = Defined ([], Ast.Empty, fun _ _ _ -> ())
-
-let get_args = function
-  | Defined (args, _, _) -> args
-  | Builtin (b, _) -> Builtin.build_args b
-
+let get_args = function Defined (args, _, _) -> args | Builtin _ -> []
 let process = function Defined (_, _, f) -> f | Builtin (_, f) -> f

@@ -1,3 +1,5 @@
+open String_utils
+
 type lex_error = Unexpected_character of Position.t * char
 
 let string_of_lex_error = function
@@ -49,7 +51,7 @@ let rec consume_full_line ctx =
   | None -> false
 
 let rec consume_multiline_comment ctx =
-  if String_utils.starts_with_at ctx.input ctx.offset "*/" then
+  if starts_with_at ctx.input ctx.offset "*/" then
     let _ = consume ctx in
     let _ = consume ctx in
     true
@@ -60,13 +62,13 @@ let rec consume_multiline_comment ctx =
 
 let rec skip_seps (ctx : context) : unit =
   if is_over ctx then ()
-  else if String_utils.starts_with_at ctx.input ctx.offset "//" then
+  else if starts_with_at ctx.input ctx.offset "//" then
     let _ = consume_full_line ctx in
     skip_seps ctx
-  else if String_utils.starts_with_at ctx.input ctx.offset "/*" then
+  else if starts_with_at ctx.input ctx.offset "/*" then
     let _ = consume_multiline_comment ctx in
     skip_seps ctx
-  else if Option.is_some (consume_if String_utils.is_sep ctx) then skip_seps ctx
+  else if Option.is_some (consume_if is_sep ctx) then skip_seps ctx
   else ()
 
 type handler = { try_consume : context -> Token.t Located.t option }
@@ -91,10 +93,14 @@ let symbol_h : handler =
       (fun ctx ->
         Option.bind (peek ctx) (function
           | '@' -> Some Token.At
+          | ',' -> Some Token.Comma
+          | '[' -> Some Token.OpeningSBracket
+          | ']' -> Some Token.ClosingSBracket
           | '$' -> Some Token.Dollar
           | ':' -> Some Token.Colon
           | '{' -> Some Token.OpeningBracket
           | '}' -> Some Token.ClosingBracket
+          | '|' -> Some Token.Bar
           | _ -> None)
         |> Option.map (fun token ->
             let p1 = clone_pos ctx in
@@ -112,10 +118,10 @@ let op_h : handler =
           if offset2 >= String.length ctx.input then None
           else
             Option.bind (peek_at ctx offset2) (fun c ->
-                if c = '-' || c = '~' then
+                if Operator.is_body_char c then
                   if dash_count = 2 then None
                   else work (offset2 + 1) (dash_count + 1)
-                else if String_utils.is_digit c || c = '_' then
+                else if is_digit c || c = '_' then
                   if dash_count = 0 then None else work (offset2 + 1) dash_count
                 else if c = '>' then
                   if dash_count = 0 then None
@@ -131,7 +137,7 @@ let op_h : handler =
         work offset1 0
         |> Option.map (fun (op, length) ->
             let p1 = clone_pos ctx in
-            for i = 0 to length - 1 do
+            for _ = 0 to length - 1 do
               let _ =
                 consume ctx
                 |> Option_utils.unwrap_or_else (fun () ->
@@ -149,9 +155,9 @@ let number_h : handler =
       (fun ctx ->
         let p1 = clone_pos ctx in
         Option.bind (peek ctx) (fun c ->
-            if String_utils.is_digit c then
+            if is_digit c then
               let rec work acc =
-                match consume_if String_utils.is_digit ctx with
+                match consume_if is_digit ctx with
                 | Some c -> work (c :: acc)
                 | None -> List.rev acc
               in
@@ -160,14 +166,6 @@ let number_h : handler =
               Some (Token.Number (int_of_char_list n) |> Located.create p1 p2)
             else None));
   }
-
-let is_valid_ident_symbol (c : char) : bool = String.contains "_+!-'" c
-
-let is_valid_ident_first_char (c : char) : bool =
-  String_utils.is_alpha c || is_valid_ident_symbol c
-
-let is_valid_ident_char (c : char) : bool =
-  String_utils.is_digit c || String_utils.is_alpha c || is_valid_ident_symbol c
 
 let ident_h : handler =
   {
@@ -182,14 +180,18 @@ let ident_h : handler =
                 | Some c -> work (c :: acc)
                 | None -> List.rev acc
               in
+              let build_name name =
+                let name = string_of_char_list name in
+                if is_valid_ident name then Some name else None
+              in
               let name = work [] in
               let p2 = clone_pos ctx in
               (if is_arg then
                  match name with
                  | [] -> None
                  | _ :: name ->
-                     Some (Token.Arg (String_utils.string_of_char_list name))
-               else Some (Token.Ident (String_utils.string_of_char_list name)))
+                     build_name name |> Option.map (fun name -> Token.Arg name)
+               else build_name name |> Option.map (fun name -> Token.Ident name))
               |> Option.map @@ Located.create p1 p2
             else None));
   }

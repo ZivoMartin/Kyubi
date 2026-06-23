@@ -1,23 +1,25 @@
-type t = { kyus : (string, (Value.t, Value.t Behavior.t) Kyu.t) Hashtbl.t }
+type t = {
+  kyus : (string, (Value.t, Value.t Behavior.t) Kyu.t) Hashtbl.t;
+  output : Value.t Queue.t;
+  input : Value.t Queue.t;
+}
 
 val create : unit -> t
-val enqueue : t -> string -> Value.t -> unit
+val enqueue : t -> Kyu_id.t -> Value.t -> unit
+val dequeue : t -> Kyu_id.t -> Value.t
 val env_of_string : string -> t
 val string_of_env : t -> string
 val equal : t -> t -> bool
-val dequeue_in : t -> string -> string -> Flow_size.t -> unit
-val produce_in : t -> string -> string -> Flow_size.t -> Flow_size.t -> unit
-
-val produce_in_this_queue :
-  t -> string -> Value.t Queue.t -> Flow_size.t -> Flow_size.t -> unit
-
+val dequeue_in : t -> Kyu_id.t -> Kyu_id.t -> Flow_size.t -> unit
+val produce_in : t -> string -> Kyu_id.t -> Flow_size.t -> Flow_size.t -> unit
 val enqueue_behavior : t -> string -> Value.t Behavior.t -> unit
 val dequeue_behavior_in : t -> string -> string -> Flow_size.t -> unit
+val dup_in : t -> Kyu_id.t -> Kyu_id.t -> Flow_size.t -> unit
 
 val promote_in :
   t ->
   (Value.t -> Value.t Behavior.t) ->
-  string ->
+  Kyu_id.t ->
   string ->
   Flow_size.t ->
   unit
@@ -26,6 +28,8 @@ val demote_in :
   t ->
   (Value.t Behavior.t -> Value.t) ->
   string ->
-  string ->
+  Kyu_id.t ->
   Flow_size.t ->
   unit
+
+val set_input_output : t -> Value.t Queue.t -> Value.t Queue.t -> t

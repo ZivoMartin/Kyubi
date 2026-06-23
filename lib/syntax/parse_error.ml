@@ -1,4 +1,10 @@
-type expectation = FlowStart | FlowComponent | BehaviorColon | ClosingBracket
+type expectation =
+  | FlowStart
+  | FlowComponent
+  | BehaviorColon
+  | ClosingBracket
+  | ClosingSBracket
+  | SerieComma
 
 type t =
   | UnexpectedToken of {
@@ -7,6 +13,7 @@ type t =
     }
   | SpecialQueueOutOfBehavior of Token.t Located.t
   | UnclosedBehavior of Span.t
+  | UnclosedSerie of Span.t
   | CannotEnqueueInput of Token.t Located.t
   | CannotDequeueOutput of Token.t Located.t
 
@@ -16,7 +23,9 @@ let string_of_expectation = function
   | FlowStart -> "a flow start"
   | FlowComponent -> "a flow component"
   | BehaviorColon -> "':'"
-  | ClosingBracket -> "']'"
+  | ClosingBracket -> "'}'"
+  | ClosingSBracket -> "']'"
+  | SerieComma -> "','"
 
 let string_of_expectations = function
   | [] -> "nothing in particular"
@@ -26,7 +35,7 @@ let string_of_expectations = function
 
 let to_string = function
   | UnexpectedToken { found; expected } ->
-      Printf.sprintf "%s: unexpected token %s, expected %s"
+      Printf.sprintf "%s: unexpected token \"%s\", expected %s"
         (Span.to_string found.span)
         (Token.to_string found.value)
         (string_of_expectations expected)
@@ -35,7 +44,10 @@ let to_string = function
         (Span.to_string token.span)
         (Token.to_string token.value)
   | UnclosedBehavior span ->
-      Printf.sprintf "%s: unclosed behavior, missing closing ']'"
+      Printf.sprintf "%s: unclosed behavior, missing closing '}'"
+        (Span.to_string span)
+  | UnclosedSerie span ->
+      Printf.sprintf "%s: unclosed serie, missing closing ']'"
         (Span.to_string span)
   | CannotDequeueOutput token ->
       Printf.sprintf "%s: cannot dequeue the output special queue."

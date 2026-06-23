@@ -5,4 +5,4 @@ val from_string : string -> t
 val to_string : t -> string
 val get_all : unit -> t list
 val get_all_string : unit -> string list
-val build_args : t -> string list
+val get_n : t -> int

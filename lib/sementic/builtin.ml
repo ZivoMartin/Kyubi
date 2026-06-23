@@ -5,7 +5,7 @@ let from_string_opt = function
   | "-" -> Some Sub
   | "!print" -> Some Print
   | "!println" -> Some Println
-  | s -> None
+  | _ -> None
 
 let from_string s =
   match from_string_opt s with
@@ -22,4 +22,3 @@ let to_string = function
 let get_all () = [ Add; Sub; Print; Println ]
 let get_all_string () = List.map to_string (get_all ())
 let get_n = function Add -> 2 | Sub -> 2 | Print -> 1 | Println -> 1
-let build_args b = List.init (get_n b) string_of_int

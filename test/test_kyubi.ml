@@ -6,30 +6,14 @@ type test_entry = {
 
 let () =
   let programs_folder = "programs" in
+  let failing_programs_folder = "failing_programs" in
   let result_folder = "result" in
 
-  let read_file (p : string) : string =
-    In_channel.with_open_text p In_channel.input_all
-  in
-
-  let tests : test_entry list =
-    Sys.readdir programs_folder
-    |> Array.to_list
+  let readdir f =
+    Sys.readdir f |> Array.to_list
     |> List.filter_map (fun prog ->
         match String.split_on_char '.' prog with
-        | [ name; "ky" ] ->
-            let prog_path = Printf.sprintf "%s/%s" programs_folder prog in
-            let result_path = Printf.sprintf "%s/%s" result_folder name in
-
-            let prog_content = read_file prog_path in
-            let result_content = read_file result_path in
-
-            print_endline (Printf.sprintf "Running %s..." prog);
-            let _, actual_env = Kyubi.Run.run prog_content in
-            print_endline (Printf.sprintf "%s ran successfully." prog);
-            let expected_env = Kyubi.Env.env_of_string result_content in
-
-            Some { program = prog; expected_env; actual_env }
+        | [ name; "ky" ] -> Some (prog, name)
         | _ ->
             Printf.printf
               "WARN: Invalid format in the program folder : %s. All tests \
@@ -37,6 +21,27 @@ let () =
                dot in there names."
               prog;
             None)
+  in
+
+  let read_file (p : string) : string =
+    In_channel.with_open_text p In_channel.input_all
+  in
+
+  let tests =
+    readdir programs_folder
+    |> List.map (fun (prog, name) ->
+        let prog_path = Printf.sprintf "%s/%s" programs_folder prog in
+        let result_path = Printf.sprintf "%s/%s" result_folder name in
+
+        let prog_content = read_file prog_path in
+        let result_content = read_file result_path in
+
+        print_endline (Printf.sprintf "Running %s..." prog);
+        let _, actual_env = Kyubi.Run.run prog_content in
+        print_endline (Printf.sprintf "%s ran successfully." prog);
+        let expected_env = Kyubi.Env.env_of_string result_content in
+
+        { program = prog; expected_env; actual_env })
   in
 
   match
@@ -61,6 +66,28 @@ let () =
            (Kyubi.Env.string_of_env test.expected_env)
            (Kyubi.Env.string_of_env test.actual_env));
       assert false
-  | None ->
-      print_endline "All test passed.";
-      ()
+  | None -> (
+      print_endline
+        "----------------- Valid Programs Tests Passed. -----------------";
+      print_endline
+        "----------------- Testing Invalid Programs. -----------------";
+      match
+        readdir failing_programs_folder
+        |> List.find_opt (fun (prog, _) ->
+            let prog_path =
+              Printf.sprintf "%s/%s" failing_programs_folder prog
+            in
+            let prog_content = read_file prog_path in
+            try
+              print_endline (Printf.sprintf "Testing %s..." prog);
+              let _ = Kyubi.Test.run prog_content in
+
+              true
+            with _ ->
+              print_endline "Passed.";
+              false)
+      with
+      | Some (p, _) -> failwith p
+      | None ->
+          print_endline "All test passed.";
+          ())
