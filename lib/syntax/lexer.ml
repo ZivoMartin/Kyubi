@@ -73,20 +73,6 @@ let rec skip_seps (ctx : context) : unit =
 
 type handler = { try_consume : context -> Token.t Located.t option }
 
-let unit_h : handler =
-  {
-    try_consume =
-      (fun ctx ->
-        match (peek ctx, peek_at ctx (ctx.offset + 1)) with
-        | Some '(', Some ')' ->
-            let p1 = clone_pos ctx in
-            let _ = consume ctx in
-            let _ = consume ctx in
-            let p2 = clone_pos ctx in
-            Some (Located.create p1 p2 Token.Unit)
-        | _ -> None);
-  }
-
 let symbol_h : handler =
   {
     try_consume =
@@ -96,11 +82,14 @@ let symbol_h : handler =
           | ',' -> Some Token.Comma
           | '[' -> Some Token.OpeningSBracket
           | ']' -> Some Token.ClosingSBracket
+          | '(' -> Some Token.OpeningPar
+          | ')' -> Some Token.ClosingPar
           | '$' -> Some Token.Dollar
           | ':' -> Some Token.Colon
           | '{' -> Some Token.OpeningBracket
           | '}' -> Some Token.ClosingBracket
           | '|' -> Some Token.Bar
+          | '>' -> Some Token.Gt
           | _ -> None)
         |> Option.map (fun token ->
             let p1 = clone_pos ctx in
@@ -190,13 +179,14 @@ let ident_h : handler =
                  match name with
                  | [] -> None
                  | _ :: name ->
-                     build_name name |> Option.map (fun name -> Token.Arg name)
+                     build_name name
+                     |> Option.map (fun name -> Token.RuntimeVal name)
                else build_name name |> Option.map (fun name -> Token.Ident name))
               |> Option.map @@ Located.create p1 p2
             else None));
   }
 
-let all_handlers = [ number_h; op_h; symbol_h; unit_h; ident_h ]
+let all_handlers = [ number_h; op_h; symbol_h; ident_h ]
 
 let next_token ctx =
   if is_over ctx then None

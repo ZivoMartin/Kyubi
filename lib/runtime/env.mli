@@ -7,6 +7,7 @@ type t = {
 val create : unit -> t
 val enqueue : t -> Kyu_id.t -> Value.t -> unit
 val dequeue : t -> Kyu_id.t -> Value.t
+val peek : t -> Kyu_id.t -> Value.t
 val env_of_string : string -> t
 val string_of_env : t -> string
 val equal : t -> t -> bool

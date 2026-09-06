@@ -5,17 +5,23 @@ type expectation =
   | ClosingBracket
   | ClosingSBracket
   | SerieComma
+  | BranchingBar
+  | BranchingCloser
 
 type t =
   | UnexpectedToken of {
       found : Token.t Located.t;
       expected : expectation list;
     }
+  | UnexpectedEOF of expectation list
   | SpecialQueueOutOfBehavior of Token.t Located.t
   | UnclosedBehavior of Span.t
   | UnclosedSerie of Span.t
+  | UnclosedBranching of Span.t
   | CannotEnqueueInput of Token.t Located.t
   | CannotDequeueOutput of Token.t Located.t
+  | InvalidFlowInBranch of Span.t
+  | InvalidPatternInBranch of Span.t
 
 exception Parsing_error of t
 
@@ -26,6 +32,8 @@ let string_of_expectation = function
   | ClosingBracket -> "'}'"
   | ClosingSBracket -> "']'"
   | SerieComma -> "','"
+  | BranchingBar -> "'|'"
+  | BranchingCloser -> "'|>'"
 
 let string_of_expectations = function
   | [] -> "nothing in particular"
@@ -49,9 +57,21 @@ let to_string = function
   | UnclosedSerie span ->
       Printf.sprintf "%s: unclosed serie, missing closing ']'"
         (Span.to_string span)
+  | UnclosedBranching span ->
+      Printf.sprintf "%s: unclosed branching, missing closing '|>'"
+        (Span.to_string span)
   | CannotDequeueOutput token ->
       Printf.sprintf "%s: cannot dequeue the output special queue."
         (Span.to_string token.span)
   | CannotEnqueueInput token ->
       Printf.sprintf "%s: cannot enqueue in the input special queue."
         (Span.to_string token.span)
+  | InvalidFlowInBranch span ->
+      Printf.sprintf "%s: This branch does not have a correct flow."
+        (Span.to_string span)
+  | InvalidPatternInBranch span ->
+      Printf.sprintf "%s: This branch does not have a correct pattern."
+        (Span.to_string span)
+  | UnexpectedEOF expected ->
+      Printf.sprintf "Unexpected EOF, expected %s"
+        (string_of_expectations expected)

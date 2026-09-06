@@ -6,12 +6,14 @@ type t =
   | Dollar
   | Colon
   | Comma
-  | Unit
   | Bar
-  | Arg of string
+  | Gt
+  | RuntimeVal of string
   | OpeningBracket
   | OpeningSBracket
   | ClosingBracket
   | ClosingSBracket
+  | OpeningPar
+  | ClosingPar
 
 val to_string : t -> string

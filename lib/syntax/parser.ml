@@ -10,10 +10,34 @@ let parse tokens =
     else throw @@ SpecialQueueOutOfBehavior token
   in
 
-  let rec parse_branching = function
-    | { value = Token.Bar } :: rest -> failwith "todo"
-    | rest -> (Ast.Branching [], rest)
-  and parse_one_flow first tokens in_behavior =
+  let rec build_prog_from_flows : Ast.t list -> Ast.t = function
+    | [] -> Ast.Empty
+    | f :: others -> Ast.Program (f, build_prog_from_flows others)
+  in
+  let rec parse_pattern span = function
+    | { value = Token.Number n } :: rest -> (Pattern.Number n, rest)
+    | { value = Token.RuntimeVal name } :: rest ->
+        (Pattern.RuntimeVal name, rest)
+    | { value = Token.OpeningPar } :: { value = Token.ClosingPar } :: rest ->
+        (Pattern.Unit, rest)
+    | _ -> throw @@ Parse_error.InvalidFlowInBranch span
+  and parse_branching in_behavior rest location =
+    let rec work acc = function
+      | { value = Token.Bar } :: { value = Token.Gt } :: rest ->
+          (Ast.Branching (List.rev acc), rest)
+      | { value = Token.Bar; span } :: rest -> (
+          let pat, rest = parse_pattern span rest in
+          match parse_flows rest in_behavior with
+          | Some ([], _) | None -> throw @@ Parse_error.InvalidFlowInBranch span
+          | Some (flows, rest) -> work ((pat, flows) :: acc) rest)
+      | guilty_token :: _ ->
+          unexpected guilty_token [ BranchingCloser; BranchingBar ]
+      | [] -> throw @@ Parse_error.UnclosedBranching location
+    in
+
+    work [] rest
+  and parse_one_flow first tokens in_behavior :
+      Ast.t * Token.t Located.t list * (Operator.t * Ast.t) option =
     let rec work first acc tokens =
       let return () =
         let flow = List.rev acc in
@@ -22,14 +46,13 @@ let parse tokens =
       in
       match tokens with
       | { value = Token.Operator op; _ } :: right :: rest ->
-          let right_ast =
+          let right_ast, rest =
             match right.value with
             | Token.Bar ->
-                let _, _ = parse_branching (right :: rest) in
-                failwith "todo"
-            | Token.Ident name -> Ast.Kyu (Kyu_id.Name name)
+                parse_branching in_behavior (right :: rest) right.span
+            | Token.Ident name -> (Ast.Kyu (Kyu_id.Name name), rest)
             | Token.Dollar -> throw @@ CannotEnqueueInput right
-            | Token.At -> parse_special_queue right in_behavior
+            | Token.At -> (parse_special_queue right in_behavior, rest)
             | _ -> throw @@ unexpected right [ FlowComponent ]
           in
 
@@ -42,7 +65,8 @@ let parse tokens =
       | _ -> return ()
     in
     work first [] tokens
-  and parse_flows tokens in_behavior =
+  and parse_flows tokens in_behavior :
+      (Ast.t list * Token.t Located.t list) option =
     parse_first_node tokens in_behavior
     |> Option.map (fun (firsts, tokens) ->
         let rec work firsts =
@@ -64,11 +88,12 @@ let parse tokens =
         let flows, rest, _ = work firsts in
         (flows, rest))
   and parse_value = function
-    | { value = Token.Unit } :: rest -> Some (Ast.Literal Literal.Unit, rest)
+    | { value = Token.OpeningPar } :: { value = Token.ClosingPar } :: rest ->
+        Some (Ast.Literal Literal.Unit, rest)
     | { value = Token.Number n } :: rest ->
         Some (Ast.Literal (Literal.Number n), rest)
-    | { value = Token.Arg name } :: rest ->
-        Some (Ast.Literal (Literal.Arg name), rest)
+    | { value = Token.RuntimeVal name } :: rest ->
+        Some (Ast.Literal (Literal.RuntimeVal name), rest)
     | { value = Token.OpeningBracket } :: rest as tokens ->
         parse_behavior tokens
     | _ -> None
@@ -100,21 +125,13 @@ let parse tokens =
         throw @@ CannotDequeueOutput first
     | ({ value = Token.Dollar } as first) :: rest ->
         ret @@ parse_special_queue first in_behavior
-    | { value = Token.ClosingBracket } :: rest when in_behavior -> None
     | { value = Token.OpeningSBracket } :: rest -> parse_serie tokens
     | [] -> None
-    | _ -> (
-        match parse_value tokens with
-        | Some (ast, rest) -> Some ([ ast ], rest)
-        | None -> unexpected (List.hd tokens) [ FlowStart ])
+    | _ -> parse_value tokens |> Option.map (fun (ast, rest) -> ([ ast ], rest))
   and parse_program tokens in_behavior =
     match parse_flows tokens in_behavior with
     | Some (flows, rest) -> (
-        let rec work = function
-          | [] -> Ast.Empty
-          | f :: others -> Ast.Program (f, work others)
-        in
-        let p = work flows in
+        let p = build_prog_from_flows flows in
         match rest with
         | [] | { value = Token.ClosingBracket } :: _ -> (p, rest)
         | _ ->
@@ -125,14 +142,13 @@ let parse tokens =
     let rec parse_args opening tokens acc =
       match tokens with
       | { value = Token.Colon; _ } :: tokens -> (tokens, List.rev acc)
-      | { value = Token.Arg a; _ } :: tokens ->
+      | { value = Token.RuntimeVal a; _ } :: tokens ->
           parse_args opening tokens (a :: acc)
       | [] -> throw @@ UnclosedBehavior opening.span
       | guilty_token :: _ when acc <> [] ->
           unexpected guilty_token [ BehaviorColon ]
       | _ -> (tokens, List.rev acc)
     in
-
     match tokens with
     | ({ value = Token.OpeningBracket; _ } as opening) :: tokens -> (
         let tokens, args = parse_args opening tokens [] in

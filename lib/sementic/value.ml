@@ -6,17 +6,17 @@ type t =
   | Behavior of string list * Ast.t
   | BuiltinBehavior of Builtin.t * t Kyu.apply
 
-let of_literal args l =
+let of_literal bindings l =
   match l with
   | Literal.Number x -> Number x
   | Literal.Unit -> Unit
-  | Literal.Arg name -> (
-      match args with
-      | Some args -> (
-          match Hashtbl.find_opt args name with
+  | Literal.RuntimeVal name -> (
+      match bindings with
+      | Some bindings -> (
+          match Bindings.get bindings name with
           | Some x -> x
           | None -> failwith (Printf.sprintf "Unbound argument : %s" name))
-      | None -> failwith "Arguments are only available inside beahviors")
+      | None -> failwith "Runtime values are only available inside beahviors")
 
 let to_literal = function
   | Number x -> Some (Literal.Number x)
@@ -68,3 +68,10 @@ let activate_builtin b =
         match Builtin.get_n b |> Queue_utils.dequeue_list_from_queue input with
         | Some args -> impl args |> List.to_seq |> Queue.add_seq output
         | None -> raise Kyu.NotEnoughElementInEntryQueue )
+
+let matches p v =
+  match (p, v) with
+  | Pattern.Number x1, Number x2 when x1 = x2 -> true
+  | Pattern.Unit, Unit -> true
+  | Pattern.RuntimeVal _, _ -> true
+  | _ -> false

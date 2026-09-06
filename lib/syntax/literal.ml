@@ -1,9 +1,9 @@
-type t = Number of int | Unit | Arg of string
+type t = Number of int | Unit | RuntimeVal of string
 
 let to_string = function
   | Number x -> string_of_int x
   | Unit -> "()"
-  | Arg name -> Printf.sprintf "'%s" name
+  | RuntimeVal name -> Printf.sprintf "'%s" name
 
 let of_string = function
   | "()" -> Unit
@@ -14,5 +14,5 @@ let of_string = function
 
       if String.starts_with ~prefix:"'" s then
         let arg = String.length s |> String.sub s 1 in
-        if String_utils.is_valid_ident arg then Arg arg else fail ()
+        if String_utils.is_valid_ident arg then RuntimeVal arg else fail ()
       else Number (int_of_string_opt s |> Option_utils.unwrap_or_else fail)

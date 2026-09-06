@@ -6,13 +6,15 @@ type t =
   | Dollar
   | Colon
   | Comma
-  | Unit
   | Bar
-  | Arg of string
+  | Gt
+  | RuntimeVal of string
   | OpeningBracket
   | OpeningSBracket
   | ClosingBracket
   | ClosingSBracket
+  | OpeningPar
+  | ClosingPar
 
 let to_string = function
   | Number x -> string_of_int x
@@ -21,11 +23,13 @@ let to_string = function
   | At -> "@"
   | Dollar -> "$"
   | Bar -> "|"
+  | Gt -> ">"
   | Colon -> ":"
   | Comma -> ","
-  | Arg name -> Printf.sprintf "'%s" name
+  | RuntimeVal name -> Printf.sprintf "'%s" name
   | OpeningBracket -> "{"
   | OpeningSBracket -> "["
   | ClosingBracket -> "}"
   | ClosingSBracket -> "]"
-  | Unit -> "()"
+  | OpeningPar -> "("
+  | ClosingPar -> ")"

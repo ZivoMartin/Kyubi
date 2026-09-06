@@ -7,14 +7,18 @@ and t =
   | Behavior of string list * t
   | Flow of flow
   | Program of t * t
-  | Branching of (Pattern.t * flow) list
+  | Branching of (Pattern.t * t list) list
+
+let rec of_list cast = function
+  | [] -> Empty
+  | a :: rest -> Program (cast a, of_list cast rest)
 
 let rec to_string = function
   | Empty -> ""
   | Literal l -> Literal.to_string l
   | Kyu k -> Kyu_id.to_string k
   | Behavior (args, body) ->
-      Printf.sprintf "{ %s : %s }"
+      Printf.sprintf " (Behavior) { %s : %s }"
         (args |> List.map (fun a -> Printf.sprintf "'%s" a) |> String.concat " ")
         (to_string body)
   | Flow (left, right) ->
@@ -22,12 +26,14 @@ let rec to_string = function
       |> List.map (fun (op, body) ->
           Printf.sprintf "%s %s" (Operator.to_string op) (to_string body))
       |> String.concat " "
-      |> Printf.sprintf "%s %s" (to_string left)
+      |> Printf.sprintf "(Flow) %s %s" (to_string left)
   | Program (left, right) ->
-      Printf.sprintf "%s\n%s" (to_string left) (to_string right)
+      Printf.sprintf "(Program) %s\n%s" (to_string left) (to_string right)
   | Branching branches ->
       branches
-      |> List.map (fun (pat, flow) ->
-          Printf.sprintf "| %s %s\n" (Pattern.to_string pat)
-            (to_string (Flow flow)))
+      |> List.map (fun (pat, flows) ->
+          flows
+          |> List.map (fun f -> to_string f)
+          |> String.concat "\n"
+          |> Printf.sprintf "(Branching) | %s %s\n" (Pattern.to_string pat))
       |> String.concat " "
